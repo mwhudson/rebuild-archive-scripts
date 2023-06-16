@@ -1,0 +1,185 @@
+#!/usr/bin/python3
+
+import sys
+import time
+
+import attr
+
+from launchpadlib.launchpad import Launchpad
+from lazr.restfulclient.errors import NotFound
+from lazr.restfulclient.resource import Entry
+
+
+owner_name = sys.argv[1]
+label = sys.argv[2]
+flavor = sys.argv[3]
+
+
+lp = Launchpad.login_with('do-kernel-rebuild', 'production', version='devel')
+owner = lp.load('/~' + owner_name)
+ubuntu = lp.distributions["ubuntu"]
+distro_series = ubuntu.getSeries(name_or_version='lunar')
+primary = ubuntu.main_archive
+
+build_steps = []
+
+
+def step(f):
+    build_steps.append(f)
+    return f
+
+
+def get_spph(archive, source_name, **kw):
+    spphs = list(
+        archive.getPublishedSources(
+            distro_series=distro_series,
+            source_name=source_name,
+            exact_match=True,
+            **kw))
+    if spphs:
+        return spphs[0]
+    else:
+        return None
+
+
+def wait_publication(spph):
+    while 1:
+        bpphs = list(spph.getPublishedBinaries())
+        if not bpphs:
+            print("No binary publications yet")
+        else:
+            status = bpphs[0].status
+            print("Binary has status", status)
+            if status == 'Published':
+                return
+            elif status != 'Pending':
+                print('wtf')
+                1/0
+        time.sleep(60)
+
+
+def get_spph_or_copy(ppa, source_name, source):
+    spph = get_spph(ppa, source_name)
+    if spph is not None:
+        print(f"{source_name} source already in PPA")
+        return spph
+    else:
+        print(f"{source_name} source not already in PPA, copying")
+        source_pph = get_spph(source, source_name, pocket='Release')
+        ppa.copyPackage(
+            from_archive=source,
+            from_pocket='Release',
+            to_pocket='Release',
+            from_series=distro_series.name,
+            to_series=distro_series.name,
+            source_name=source_name,
+            version=source_pph.source_package_version,
+            )
+        while True:
+            spph = get_spph(ppa, source_name)
+            if spph is not None:
+                print(f"{source_name} copied to PPA")
+                return spph
+            print("waiting for spph to appear")
+            time.sleep(10)
+
+
+@attr.s(auto_attribs=True)
+class Context:
+    kernel_ppa: Entry = None
+    kernel_spph: Entry = None
+    flavor: str = 'generic'
+
+    def kernel_source_name(self, suffix=None):
+        base = 'linux'
+        if suffix:
+            base = base + '-' + suffix
+        if self.flavor != 'generic':
+            base = base + '-' + self.flavor
+        return base
+
+
+@step
+def check_ppa(context):
+    name = f'kernel-{label}'
+    print("checking for PPA...")
+    try:
+        ppa = owner.getPPAByName(name=name)
+        print("found")
+    except NotFound:
+        print("not found, creating")
+        ppa = owner.owner.createPPA(name=name)
+    context.kernel_ppa = ppa
+
+
+# @step
+def check_dependencies(context):
+    toolchain_ppa = owner.getPPAByName(f'toolchain-{label}')
+    deps = list(context.kernel_ppa.dependencies)
+    for dep in deps:
+        if dep.dependency == toolchain_ppa:
+            return
+    else:
+        print("Adding dependency on toolchain ppa")
+        context.kernel_ppa.addArchiveDependency(
+            dependency=toolchain_ppa, pocket='Release')
+    for dep in deps:
+        if dep.dependency == primary and dep.pocket != 'Release':
+            print("Fixing dependency on primary archive")
+            context.kernel_ppa.removeArchiveDependency(dep)
+            context.kernel_ppa.addArchiveDependency(
+                dependency=primary, pocket='Release')
+
+
+@step
+def copy_kernel_source(context):
+    context.kernel_spph = get_spph_or_copy(
+        context.kernel_ppa,
+        context.kernel_source_name(),
+        primary)
+
+
+@step
+def wait_kernel_publication(context):
+    wait_publication(context.kernel_spph)
+
+
+@step
+def build_ancillaries(context):
+    spph = get_spph(
+        context.kernel_ppa,
+        context.kernel_source_name('generate'))
+    if spph is None:
+        1/0
+    else:
+        context.ancillary_spph = spph
+
+
+@step
+def wait_ancillary_publication(context):
+    wait_publication(context.ancillary_spph)
+
+
+@step
+def copy_kernel_signed_source(context):
+    context.kernel_signed_spph = get_spph_or_copy(
+        context.kernel_ppa,
+        context.kernel_source_name('signed'))
+
+
+@step
+def wait_kernel_signed_publication(context):
+    wait_publication(context.kernel_signed_spph)
+
+
+rebuild_name = 
+    
+@step
+def copy_to_rebuild_archive(context):
+    
+
+if __name__ == '__main__':
+    context = Context(flavor=flavor)
+    for step in build_steps:
+        print('running step', step.__name__)
+        step(context)

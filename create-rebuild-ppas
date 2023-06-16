@@ -1,0 +1,23 @@
+#!/usr/bin/python3
+
+import sys
+
+from launchpadlib.launchpad import Launchpad
+
+lp = Launchpad.login_with('create-rebuild-ppas', 'production', version='devel')
+
+owner = lp.load('/~' + sys.argv[1])
+
+label = sys.argv[2]
+
+ppas = {}
+
+for prefix in 'toolchain', 'livecd-rootfs', 'toolchain':
+    ppas[prefix] = owner.createPPA(name=prefix + '-' + label)
+
+[dep] = ppas['kernel'].dependencies
+
+ppas['kernel'].removeArchiveDependency(dep)
+ppas['kernel'].addArchiveDependency(dep.dependency, pocket='Release')
+ppas['kernel'].addArchiveDependency(
+    dependency=ppas['toolchain'], pocket='Release')

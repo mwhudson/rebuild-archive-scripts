@@ -1,0 +1,16 @@
+#!/usr/bin/python3
+
+import sys
+
+from launchpadlib.launchpad import Launchpad
+
+lp = Launchpad.login_with('add-rebuild-dep', 'production', version='devel')
+
+owner = sys.argv[1]
+label = sys.argv[2]
+
+toolchain_ppa = lp.load(f'/~{owner}/+archive/ubuntu/toolchain-{label}')
+rebuild_archive = lp.load(f'/ubuntu/+archive/{label}')
+
+rebuild_archive.addArchiveDependency(
+    dependency=toolchain_ppa, pocket='Release')
