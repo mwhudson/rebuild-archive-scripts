@@ -164,7 +164,8 @@ def wait_ancillary_publication(context):
 def copy_kernel_signed_source(context):
     context.kernel_signed_spph = get_spph_or_copy(
         context.kernel_ppa,
-        context.kernel_source_name('signed'))
+        context.kernel_source_name('signed'),
+        primary)
 
 
 @step
@@ -172,11 +173,64 @@ def wait_kernel_signed_publication(context):
     wait_publication(context.kernel_signed_spph)
 
 
-rebuild_name = 
-    
+rebuild_name = 'test-rebuild-20230515-lunar-' + label
+rebuild_archive = lp.load('/ubuntu/+archive/' + rebuild_name)
+
+
+def copy_if_no_binaries(source, dest, source_package_name):
+    spph = get_spph(dest, source_package_name)
+    if spph is None or not list(spph.getPublishedBinaries()):
+        spph = get_spph(source, source_package_name, pocket='Release')
+        print(f"copying {spph} to {dest} with binaries")
+        dest.copyPackage(
+            from_archive=source,
+            include_binaries=True,
+            from_pocket='Release',
+            to_pocket='Release',
+            from_series=distro_series.name,
+            to_series=distro_series.name,
+            source_name=spph.source_package_name,
+            version=spph.source_package_version,
+            )
+        while True:
+            spph = get_spph(dest, source_package_name)
+            if spph is not None:
+                print(f"{source_package_name} copied to PPA")
+                break
+            print("waiting for spph to appear")
+            time.sleep(10)
+    else:
+        print(f"{source_package_name} already has binaries in {dest}")
+    return spph
+
+
 @step
 def copy_to_rebuild_archive(context):
-    
+    spphs = [
+        copy_if_no_binaries(
+            context.kernel_ppa,
+            rebuild_archive,
+            context.kernel_source_name()),
+        copy_if_no_binaries(
+            context.kernel_ppa,
+            rebuild_archive,
+            context.kernel_source_name('signed')),
+        copy_if_no_binaries(
+            primary,
+            rebuild_archive,
+            'grub2-signed'),
+        copy_if_no_binaries(
+            primary,
+            rebuild_archive,
+            'grub2-unsigned'),
+        copy_if_no_binaries(
+            primary,
+            rebuild_archive,
+            'shim-signed'),
+        ]
+    for spph in spphs:
+        wait_publication(spph)
+
 
 if __name__ == '__main__':
     context = Context(flavor=flavor)
