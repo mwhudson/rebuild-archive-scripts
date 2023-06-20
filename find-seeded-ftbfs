@@ -1,0 +1,71 @@
+#!/usr/bin/python3
+
+import os
+import re
+import subprocess
+import sys
+
+from launchpadlib.launchpad import Launchpad
+
+label = sys.argv[1]
+
+lp = Launchpad.login_with('find-seeded-ftbfs', 'production', version='devel')
+
+rebuild_archive = lp.load('/ubuntu/+archive/' + label)
+
+spph = next(iter(rebuild_archive.getPublishedSources()))
+
+series_name = spph.distro_series.name
+
+germinate_dir = f'germinate-{series_name}'
+
+if not os.path.isdir(germinate_dir):
+    os.mkdir(f'germinate-{series_name}')
+    germinate_cmd = [
+        'germinate',
+        '-d', series_name,
+        '-S', 'https://git.launchpad.net/~ubuntu-core-dev/ubuntu-seeds/+git/',
+        '-c', 'main',
+        '-s', f'ubuntu.{series_name}',
+        '-a', 'amd64',
+        '--no-rdepends',
+        '--vcs', 'git',
+        ]
+    subprocess.run(
+        germinate_cmd,
+        check=True,
+        cwd=germinate_dir)
+
+
+def check_pkg_built(source_package_name):
+    spphs = rebuild_archive.getPublishedSources(
+        source_name=source_package_name)
+    for spph in spphs:
+        for build in spph.getBuilds():
+            if build.buildstate != 'Successfully built':
+                break
+        else:
+            return True
+    return False
+
+
+ftbfs = []
+
+for seed in sys.argv[2:]:
+    with open(f'{germinate_dir}/{seed}.sources') as seed:
+        for line in seed:
+            if re.match('^[a-z0-9]', line):
+                pkg = line.split()[0]
+                print(f'checking {pkg}... ', end='', flush=True)
+                if check_pkg_built(pkg):
+                    print('ok')
+                else:
+                    print("FAIL")
+                    ftbfs.append(pkg)
+
+if ftbfs:
+    print()
+    print("FAILURES")
+    print()
+    for pkg in ftbfs:
+        print(pkg)
