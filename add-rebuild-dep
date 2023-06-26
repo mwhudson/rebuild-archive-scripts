@@ -12,5 +12,10 @@ label = sys.argv[2]
 toolchain_ppa = lp.load(f'/~{owner}/+archive/ubuntu/toolchain-{label}')
 rebuild_archive = lp.load(f'/ubuntu/+archive/{label}')
 
+for dep in rebuild_archive.depencies:
+    rebuild_archive.removeArchiveDependency(dep)
+
 rebuild_archive.addArchiveDependency(
     dependency=toolchain_ppa, pocket='Release')
+rebuild_archive.addArchiveDependency(
+    dependency=lp.distributions["ubuntu"].main_archive, pocket='Release')
