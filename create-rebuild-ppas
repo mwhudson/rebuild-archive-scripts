@@ -12,7 +12,7 @@ label = sys.argv[2]
 
 ppas = {}
 
-for prefix in 'toolchain', 'livecd-rootfs', 'toolchain':
+for prefix in 'toolchain', 'livecd-rootfs', 'kernel':
     ppas[prefix] = owner.createPPA(name=prefix + '-' + label)
 
 [dep] = ppas['kernel'].dependencies
