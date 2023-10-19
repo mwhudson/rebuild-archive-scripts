@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import glob
 import os
 import re
 import subprocess
@@ -51,8 +52,15 @@ def check_pkg_built(source_package_name):
 
 ftbfs = []
 
-for seed in sys.argv[2:]:
-    with open(f'{germinate_dir}/{seed}.sources') as seed:
+seed_files = []
+if sys.argv[2:]:
+    for seed_name in sys.argv[2:]:
+        seed_files.append(f'{germinate_dir}/{seed_name}.sources')
+else:
+    seed_files = glob.glob(f'{germinate_dir}/*.sources')
+
+for seed_file in seed_files:
+    with open(seed_file) as seed:
         for line in seed:
             if re.match('^[a-z0-9]', line):
                 pkg = line.split()[0]
