@@ -37,6 +37,8 @@ def get_spph(archive, source_name, **kw):
             exact_match=True,
             **kw))
     if spphs:
+        if len(spphs) > 1:
+            print("wtf", spphs)
         return spphs[0]
     else:
         return None
@@ -173,7 +175,7 @@ def wait_kernel_signed_publication(context):
     wait_publication(context.kernel_signed_spph)
 
 
-rebuild_name = 'test-rebuild-20230515-lunar-' + label
+rebuild_name = label
 rebuild_archive = lp.load('/ubuntu/+archive/' + rebuild_name)
 
 

@@ -15,9 +15,9 @@ ppas = {}
 for prefix in 'toolchain', 'livecd-rootfs', 'kernel':
     ppas[prefix] = owner.createPPA(name=prefix + '-' + label)
 
-[dep] = ppas['kernel'].dependencies
 
-ppas['kernel'].removeArchiveDependency(dep)
-ppas['kernel'].addArchiveDependency(dep.dependency, pocket='Release')
+main_archive = lp.load('/ubuntu').main_archive
+
+ppas['kernel'].addArchiveDependency(dependency=main_archive, pocket='Release')
 ppas['kernel'].addArchiveDependency(
     dependency=ppas['toolchain'], pocket='Release')
