@@ -38,6 +38,7 @@ def get_spph(archive, source_name, **kw):
             **kw))
     if spphs:
         if len(spphs) > 1:
+            print([spph.status for spph in spphs])
             print("wtf", spphs)
         return spphs[0]
     else:
@@ -48,10 +49,10 @@ def wait_publication(spph):
     while 1:
         bpphs = list(spph.getPublishedBinaries())
         if not bpphs:
-            print("No binary publications yet")
+            print(f"No binary publications for {spph.source_package_name} yet")
         else:
             status = bpphs[0].status
-            print("Binary has status", status)
+            print(f"Binary {bpphs[0].binary_package_name} has status {status}")
             if status == 'Published':
                 return
             elif status != 'Pending':
@@ -67,7 +68,7 @@ def get_spph_or_copy(ppa, source_name, source):
         return spph
     else:
         print(f"{source_name} source not already in PPA, copying")
-        source_pph = get_spph(source, source_name, pocket='Release')
+        source_pph = get_spph(source, source_name, pocket='Release', status='Published')
         ppa.copyPackage(
             from_archive=source,
             from_pocket='Release',
@@ -152,6 +153,7 @@ def build_ancillaries(context):
         context.kernel_ppa,
         context.kernel_source_name('generate'))
     if spph is None:
+        print("building of ancillaries not yet automated")
         1/0
     else:
         context.ancillary_spph = spph
@@ -180,10 +182,10 @@ rebuild_archive = lp.load('/ubuntu/+archive/' + rebuild_name)
 
 
 def copy_if_no_binaries(source, dest, source_package_name):
-    spph = get_spph(dest, source_package_name)
+    spph = get_spph(dest, source_package_name, status='Published')
     if spph is None or not list(spph.getPublishedBinaries()):
-        spph = get_spph(source, source_package_name, pocket='Release')
-        print(f"copying {spph} to {dest} with binaries")
+        spph = get_spph(source, source_package_name, pocket='Release', status='Published')
+        print(f"copying {spph.source_package_name} to {dest} with binaries")
         dest.copyPackage(
             from_archive=source,
             include_binaries=True,
@@ -193,6 +195,7 @@ def copy_if_no_binaries(source, dest, source_package_name):
             to_series=distro_series.name,
             source_name=spph.source_package_name,
             version=spph.source_package_version,
+            auto_approve=True,
             )
         while True:
             spph = get_spph(dest, source_package_name)
