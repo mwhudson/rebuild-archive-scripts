@@ -232,6 +232,10 @@ def copy_to_rebuild_archive(context):
             primary,
             rebuild_archive,
             'shim-signed'),
+        copy_if_no_binaries(
+            primary,
+            rebuild_archive,
+            'fwupd-signed'),
         ]
     for spph in spphs:
         wait_publication(spph)

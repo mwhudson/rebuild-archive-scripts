@@ -38,12 +38,12 @@ if not os.path.isdir(germinate_dir):
         cwd=germinate_dir)
 
 SUCCESS_STATE = 'Successfully built'
-PROGRESS_STATES = ['Needs building', 'Uploading build']
+PROGRESS_STATES = ['Needs building', 'Uploading build', 'Currently building']
 
 
 def check_pkg_built(source_package_name):
     spphs = rebuild_archive.getPublishedSources(
-        source_name=source_package_name, status="Published")
+        source_name=source_package_name, status="Published", exact_match=True)
     for spph in spphs:
         for build in spph.getBuilds():
             if build.buildstate != SUCCESS_STATE:
@@ -64,21 +64,26 @@ else:
 
 waiting = []
 
+pkgs = set()
+
 for seed_file in seed_files:
     with open(seed_file) as seed:
         for line in seed:
             if re.match('^[a-z0-9]', line):
                 pkg = line.split()[0]
-                print(f'checking {pkg}... ', end='', flush=True)
-                state = check_pkg_built(pkg)
-                if state == SUCCESS_STATE:
-                    print('ok')
-                elif state in PROGRESS_STATES:
-                    print("waiting")
-                    waiting.append(pkg)
-                else:
-                    print("FAIL", state)
-                    ftbfs.append((state, pkg))
+                pkgs.add(pkg)
+
+for pkg in sorted(pkgs):
+    print(f'checking {pkg}... ', end='', flush=True)
+    state = check_pkg_built(pkg)
+    if state == SUCCESS_STATE:
+        print('ok')
+    elif state in PROGRESS_STATES:
+        print("waiting")
+        waiting.append(pkg)
+    else:
+        print("FAIL", state)
+        ftbfs.append((state, pkg))
 
 if waiting:
     print()
