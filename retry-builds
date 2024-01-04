@@ -15,11 +15,10 @@ lp = Launchpad.login_with('retry-builds', 'production', version='devel')
 
 rebuild_archive = lp.load('/ubuntu/+archive/' + label)
 
-builds = rebuild_archive.getBuildRecords(build_state=state)
-
 i = 0
 
 while True:
+    builds = rebuild_archive.getBuildRecords(build_state=state)
     slice = list(builds[100*i: 100*(i+1)])
     if not slice:
         break
