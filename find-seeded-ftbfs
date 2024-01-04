@@ -61,13 +61,9 @@ if sys.argv[2:]:
 else:
     with open(f'{germinate_dir}/structure') as structure:
         for line in structure:
-            print(line, ':' in line)
             if ':' in line:
                 seed_name = line.split(':')[0]
                 seed_files.append(f'{germinate_dir}/{seed_name}.sources')
-
-
-print(seed_files)
 
 waiting = []
 
