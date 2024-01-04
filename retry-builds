@@ -1,0 +1,29 @@
+#!/usr/bin/python3
+
+import sys
+
+from launchpadlib.launchpad import Launchpad
+
+label = sys.argv[1]
+
+if len(sys.argv) > 2:
+    state = sys.argv[2]
+else:
+    state = 'Failed to build'
+
+lp = Launchpad.login_with('retry-builds', 'production', version='devel')
+
+rebuild_archive = lp.load('/ubuntu/+archive/' + label)
+
+builds = rebuild_archive.getBuildRecords(build_state=state)
+
+i = 0
+
+while True:
+    slice = list(builds[100*i: 100*(i+1)])
+    if not slice:
+        break
+    for build in slice:
+        build.retry()
+        print('.', end='', flush=True)
+    print()
