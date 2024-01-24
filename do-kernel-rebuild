@@ -112,6 +112,12 @@ def check_ppa(context):
     except NotFound:
         print("not found, creating")
         ppa = owner.owner.createPPA(name=name)
+        for dep in ppa.dependencies:
+            ppa.removeArchiveDependency(dep)
+        main_archive = lp.load('/ubuntu').main_archive
+        ppa.addArchiveDependency(dependency=main_archive, pocket='Release')
+        toolchain_ppa = owner.getPPAByName(name='toolchain-{label}')
+        ppa.addArchiveDependency(dependency=toolchain_ppa, pocket='Release')
     context.kernel_ppa = ppa
 
 
@@ -184,7 +190,8 @@ rebuild_archive = lp.load('/ubuntu/+archive/' + rebuild_name)
 def copy_if_no_binaries(source, dest, source_package_name):
     spph = get_spph(dest, source_package_name, status='Published')
     if spph is None or not list(spph.getPublishedBinaries()):
-        spph = get_spph(source, source_package_name, pocket='Release', status='Published')
+        spph = get_spph(
+            source, source_package_name, pocket='Release', status='Published')
         print(f"copying {spph.source_package_name} to {dest} with binaries")
         dest.copyPackage(
             from_archive=source,

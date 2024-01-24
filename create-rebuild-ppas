@@ -12,16 +12,12 @@ label = sys.argv[2]
 
 ppas = {}
 
-for prefix in 'toolchain', 'livecd-rootfs', 'kernel':
+for prefix in 'toolchain', 'livecd-rootfs':
     ppas[prefix] = owner.createPPA(name=prefix + '-' + label)
-
 
 main_archive = lp.load('/ubuntu').main_archive
 
-for ppa in ppas['kernel'], ppas['livecd-rootfs']:
+for ppa in ppas['livecd-rootfs'], ppas['toolchain']:
     for dep in ppa.dependencies:
         ppa.removeArchiveDependency(dep)
     ppa.addArchiveDependency(dependency=main_archive, pocket='Release')
-
-ppas['kernel'].addArchiveDependency(
-    dependency=ppas['toolchain'], pocket='Release')
