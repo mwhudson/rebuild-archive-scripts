@@ -1,0 +1,18 @@
+#!/usr/bin/python3
+
+import sys
+
+owner_name = sys.argv[1]
+label = sys.argv[2]
+series = sys.argv[3]
+
+print(f"""
+export LPCONFIG=launchpad-ftpmaster-publisher
+script -c "/srv/launchpad/code/scripts/populate-archive.py -y -v \\
+  --from-distribution=ubuntu --from-suite={series} \\
+  --to-distribution=ubuntu   --to-suite={series} \\
+  -a amd64 \
+  --to-user={owner_name} --to-archive={label} \\
+  --reason=\\"test rebuild {label}\\"" \\
+  ~/logs/{owner_name}-{label}.log
+""")
